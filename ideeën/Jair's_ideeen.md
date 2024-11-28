@@ -41,7 +41,4 @@ Een app speciaal voor gescheiden ouders en hun kinderen om op een leuke en inter
 
 ---
 
-## Monetisatie
-- Gratis basisplan (videogesprekken en simpele spellen).
-- Premium-plan met meer spellen en extra functies (bijv. interactieve verhalen).
 
