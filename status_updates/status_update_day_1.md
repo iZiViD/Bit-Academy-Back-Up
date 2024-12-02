@@ -1,4 +1,4 @@
-# Daily Standup
+# Daily Standup 1
 
 
 * ### We hebben besproken van welke frontend frameworks we zullen gebruiken
