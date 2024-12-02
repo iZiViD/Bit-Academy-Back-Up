@@ -6,6 +6,11 @@ import './App.css'
 function App() {
   const [count, setCount] = useState(0)
 
+  const askForScreenSharing = async () => {
+      const stream = await navigator.mediaDevices.getDisplayMedia();
+        return stream;
+  }
+
   return (
     <>
       <div>
@@ -28,6 +33,7 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
+        <button onClick={askForScreenSharing}>Ask for screen sharing</button>
     </>
   )
 }
