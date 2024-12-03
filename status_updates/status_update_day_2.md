@@ -1,3 +1,0 @@
-# Daily Standup 2
-
-
