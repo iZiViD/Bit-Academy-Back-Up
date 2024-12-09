@@ -1,16 +1,12 @@
 "use client";
-
-import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
-import { LatestPost } from "#/app/_components/post";
-import { auth } from "#/server/auth";
-import { api, HydrateClient } from "#/trpc/server";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
+  const [inLobby, setInLobby] = useState(false);
+  const participant = useRef<RTCPeerConnection | null>(null);
+    useEffect(() => {
       setIsClient(true);
       return () => {
           if (videoRef.current) {
@@ -21,6 +17,7 @@ export default function Home() {
       }
     };
 }, []);
+
 
   const askForScreenSharing = async () => {
     const constraints = { video: { cursor: "always" }, audio: true };
@@ -52,7 +49,6 @@ export default function Home() {
   return (
     
     <div>
-    <h1 className="text-center m-4 font-semibold">WebRTC</h1>
       {isClient && (
         <>
             <button onClick={askForScreenSharing} className="btn btn-circle btn-outline m-4">
@@ -62,7 +58,13 @@ export default function Home() {
           </button>
         </>
       )}
+      <h1 className="font-semibold text-center">WebRTC Lobby</h1>
+      <h2 className="text-center m-4">Lobby</h2>
+    <div className="flex justify-center items-center m-4">
+        <button className="btn">Join Lobby</button>
+    </div>
       <video ref={videoRef} id="previewVideo" style={{ width: '100%', height: 'auto' }}></video>
+    
     </div>
   );
 
