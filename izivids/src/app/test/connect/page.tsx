@@ -1,34 +1,43 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Peer } from "peerjs";
+import { Peer, DataConnection } from 'peerjs'
 
-export default function Home() {
-    const [peer, setPeer] = useState<Peer | null>(null);
-    const [conn, setConn] = useState<Peer.DataConnection | null>(null);
+export default function Test() {
+    const [peerId, setPeerId] = useState('');
+    const [peer, setPeer] = useState<Peer|null>(null);
+    const [connectToPeerId, setConnectToPeerId] = useState('');
+    const [conn, setConn] = useState<DataConnection|null>(null);
 
-    useEffect(() => {
-        console.log('starting peer')
-        const peer = new Peer('test-izivid-2');
+    const createPeer = () => {
+        const peer = new Peer();
         setPeer(peer);
         
-        console.log(peer);
-
-        console.log('starting connection')
-        const conn = peer.connect('test-izivid-1');
-        setConn(conn);
-
-        console.log(conn);
-
-    }, []);
-    
-    const sendData = () => {
-        conn.send('hi!');
+        peer.on('open', (id: string) => {
+            setPeerId(id);
+        });
     }
 
+    const connectToPeer = () => {
+        if (!peer) {
+            console.error('Peer not created');
+            return
+        }
+        const conn = peer.connect(connectToPeerId);
+        setConn(conn);
+    }
+
+
     return (
-        <>
-            <div>test</div>
-            <button onClick={sendData}>send data</button>
-        </>
-    );
+        <div>
+            <h1>test</h1>
+            <button onClick={createPeer}>Create Peer</button>
+            <p>Peer id: {peerId}</p>
+            <hr />
+            <input type="text" placeholder="Connect to Peer id" onChange={(e) => setConnectToPeerId(e.target.value)} />
+            <button onClick={() => connectToPeer()}>Connect to Peer</button>
+            <p>Connection id: {conn?.serialization}</p>
+            <hr />
+            <button onClick={() => conn?.send('Hello')}>Send</button>
+        </div>
+    )
 }

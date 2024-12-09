@@ -1,31 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Peer } from "peerjs";
+import { Peer } from 'peerjs'
 
-export default function Home() {
-    const [peer, setPeer] = useState<Peer | null>(null);
+export default function Test() {
+    const [peer, setPeer] = useState<Peer|null>(null);
+    const [peerId, setPeerId] = useState('');
 
-    useEffect(() => {
-        console.log('starting peer')
-        const peer = new Peer('test-izivid-1');
+    const createPeer = () => {
+        const peer = new Peer();
         setPeer(peer);
-
-        console.log(peer);
-        peer.on("connection", (conn) => {
-            conn.on("data", (data) => {
-                // Will print 'hi!'
-                console.log(data);
-            });
-            conn.on("open", () => {
-                console.log("Connection opened");
-            });
+        
+        peer.on('open', (id: string) => {
+            setPeerId(id);
         });
 
-    }, []);
-// You can pick your own id or omit the id if you want to get a random one from the server.
+        peer.on('connection', (conn) => {
+            console.log('connection', conn);
+
+            conn.on('data', (data) => {
+                console.log('data', data);
+            });
+        })
+    }
+
 
     return (
-        <div>test</div>
-
-    );
+        <div>
+        <h1>test</h1>
+        <button onClick={createPeer}>Create Peer</button>
+        <p>Peer id: {peerId}</p>
+        </div>
+    )
 }
