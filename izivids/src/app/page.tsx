@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { Peer } from "peerjs";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [inLobby, setInLobby] = useState(false);
-  const participant = useRef<RTCPeerConnection | null>(null);
+
     useEffect(() => {
       setIsClient(true);
       return () => {
@@ -58,9 +58,7 @@ export default function Home() {
           </button>
         </>
       )}
-      <h1 className="font-semibold text-center">WebRTC Lobby</h1>
-      <h2 className="text-center m-4">Lobby</h2>
-    <div className="flex justify-center items-center m-4">
+    <div className="flex justify-center items-center m-96">
         <button className="btn">Join Lobby</button>
     </div>
       <video ref={videoRef} id="previewVideo" style={{ width: '100%', height: 'auto' }}></video>
