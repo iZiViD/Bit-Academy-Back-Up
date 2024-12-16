@@ -62,4 +62,4 @@ export default function Home() {
       <video ref={videoRef} id="previewVideo" style={{ width: '100%', height: 'auto' }}></video>
     </div>
   );
-}
+} 
