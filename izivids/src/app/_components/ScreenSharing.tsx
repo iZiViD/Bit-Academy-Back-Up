@@ -1,10 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
-import { LatestPost } from "#/app/_components/post";
-import { auth } from "#/server/auth";
-import { api, HydrateClient } from "#/trpc/server";
 
 export default function ScreenSharing() {
   const [isClient, setIsClient] = useState(false);
