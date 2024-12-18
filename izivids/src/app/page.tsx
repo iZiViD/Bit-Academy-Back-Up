@@ -25,7 +25,7 @@ export default function Home() {
     }, []);
 
     const askForScreenSharing = async () => {
-        const constraints = { video: { cursor: "always" }, audio: true };
+        const constraints = { video: { cursor: "always", displaySurface: "monitor" }, audio: true };
 
         try {
             if (!navigator.mediaDevices.getDisplayMedia) {
@@ -46,7 +46,11 @@ export default function Home() {
             }
         } catch (error) {
             console.error("Error sharing screen:", error);
-            alert("Failed to share screen: " + error.message);
+            if (error instanceof Error) {
+                alert("Failed to share screen: " + error.message);
+            } else {
+                alert("Failed to share screen: An unknown error occurred.");
+            }
         }
     };
 
