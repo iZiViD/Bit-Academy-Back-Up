@@ -1,89 +1,206 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { Peer, type DataConnection } from 'peerjs';
-import { WebcamComponent, WebRTCComponent } from './_index';
-import { set } from 'zod';
+import { useEffect, useState } from 'react';
+import { MediaConnection, Peer, type DataConnection } from 'peerjs';
+import { WebcamComponent, StreamDisplayComponent } from './_index';
 
 const PeerConnector = () => {
-    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    // Core peer state
     const [peer, setPeer] = useState<Peer | null>(null);
-    const [connectToPeerId, setConnectToPeerId] = useState('');
-    const [conn, setConn] = useState<DataConnection | null>(null);
-    const [receivedData, setData] = useState('');
-    const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+    const [remotePeerId, setRemotePeerId] = useState<string>('');
+    const [connection, setConnection] = useState<DataConnection | null>(null);
+    
+    // Message state
+    const [messages, setMessages] = useState<string[]>([]);
+    
+    // Call state
+    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+    const [activeCall, setActiveCall] = useState<MediaConnection | null>(null);
 
+    // Initialize peer connection
     useEffect(() => {
-        const createPeer = () => {
-            const peer = new Peer();
+        const newPeer = new Peer();
 
-            peer.on('open', (id: string) => {
-                setPeer(peer);
-                console.log('peer id', id);
-            });
+        newPeer.on('open', (id) => {
+            console.log('My peer ID is:', id);
+            setPeer(newPeer);
+        });
 
-            peer.on('connection', registerConnection);
-
-            peer.on('call', registerCall);
-        };
-        createPeer();
+        newPeer.on('connection', handleIncomingConnection);
+        newPeer.on('call', handleIncomingCall);
+        newPeer.on('error', (error) => console.error('Peer error:', error));
 
         return () => {
-            peer?.destroy();
+            // Clean up streams when component unmounts
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            if (remoteStream) {
+                remoteStream.getTracks().forEach(track => track.stop());
+            }
+            newPeer.destroy();
         };
     }, []);
 
-    const registerConnection = (incommingConn: DataConnection) => {
-        setConn(incommingConn);
-
-        incommingConn.on('data', (data) => {
-            console.log('data', data);
-            setData(data);
-        })
-    }
-
-    const connectToPeer = () => {
-        const newConnection = peer.connect(connectToPeerId);
-        registerConnection(newConnection);
+    // Handle incoming data connection
+    const handleIncomingConnection = (conn: DataConnection) => {
+        setConnection(conn);
+        setupConnectionHandlers(conn);
     };
 
-    const registerCall = (call: any) => {
-        call.answer(localStream!);
-
-        call.on('stream', (remoteStream) => {
-            console.log('remote stream', remoteStream);
-            remoteVideoRef.current!.srcObject = remoteStream;
-        });
-    }
-
-    const callPeer = () => {
-        const call = peer.call(connectToPeerId, localStream!);
-
-        console.log('call', call);
+    // Handle incoming call
+    const handleIncomingCall = (call: MediaConnection) => {
+        console.log('Incoming call received');
+        setActiveCall(call);
         
-        call.on('stream', (remoteStream) => {
-            console.log('remote stream', remoteStream);
+        console.log(localStream);
+        // Auto-answer the call, optionally with stream
+        if (localStream) {
+            console.log('Answering call with local stream');
+            call.answer(localStream);
+        } else {
+            console.log('Answering call without local stream');
+            call.answer();
+        }
+        
+        call.on('stream', (incomingStream) => {
+            console.log('Received remote stream');
+            setRemoteStream(incomingStream);
         });
-    }
+    };
 
-    const connectElement = (<>
-        <input type="text" placeholder="Connect to Peer id" onChange={(e) => setConnectToPeerId(e.target.value)} />
-        <button onClick={() => connectToPeer()}>Connect to Peer</button>
-    </>);
+    // Connect to a remote peer
+    const connectToPeer = () => {
+        if (!peer || !remotePeerId) return;
+        
+        const conn = peer.connect(remotePeerId);
+        setConnection(conn);
+        setupConnectionHandlers(conn);
+    };
+
+    // Set up connection event handlers
+    const setupConnectionHandlers = (conn: DataConnection) => {
+        conn.on('open', () => {
+            console.log('Connected to peer:', conn.peer);
+        });
+
+        conn.on('data', (data) => {
+            if (typeof data === 'string') {
+                setMessages(prev => [...prev, `Them: ${data}`]);
+            }
+        });
+
+        conn.on('close', () => {
+            setConnection(null);
+            setMessages(prev => [...prev, 'Connection closed']);
+        });
+    };
+
+    // Send a message
+    const sendMessage = (message: string) => {
+        if (!connection) return;
+        
+        connection.send(message);
+        setMessages(prev => [...prev, `Me: ${message}`]);
+    };
+
+    // Initiate a call
+    const startCall = () => {
+        console.log('Starting call');
+        console.log(localStream);
+        if (!peer || !remotePeerId || !localStream) return;
+        
+        const call: MediaConnection = peer.call(remotePeerId, localStream);
+
+        call.on('stream', (incomingStream) => {
+            console.log('Call started:', call);
+            console.log(call.metadata);
+            console.log('Received remote stream');
+
+            setActiveCall(call);
+            setRemoteStream(incomingStream);
+        });
+
+        call.on('error', (error) => {
+            console.log('Error:', error);
+        });
+
+        call.on('close', () => {
+            console.log('Call closed');
+            setActiveCall(null);
+            setRemoteStream(null);
+        });
+    };
 
     return (
-        <div>
-            <hr />
-            {peer ? <p>Peer id: {peer.id}</p> : <p>Peer not created</p>}
-            {peer ? connectElement : null}
-            <hr />
-            <button onClick={() => conn?.send('Hello')}>Send hello</button>
-            <p>Received data: {receivedData}</p>
-            <button onClick={callPeer}>Call Peer</button>
-            <WebcamComponent onStreamReady={setLocalStream} />
-            {localStream && <WebRTCComponent localStream={localStream} />}
+        <div className="space-y-4 p-4">
+            {/* Connection Status */}
+            <div className="border p-4 rounded">
+                <h2 className="font-bold">Connection Status</h2>
+                <p>My Peer ID: {peer?.id || 'Connecting...'}</p>
+                {!connection && (
+                    <div className="flex gap-2 mt-2">
+                        <input
+                            type="text"
+                            value={remotePeerId}
+                            onChange={(e) => setRemotePeerId(e.target.value)}
+                            placeholder="Remote Peer ID"
+                            className="border p-2"
+                        />
+                        <button 
+                            onClick={connectToPeer}
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            disabled={!peer || !remotePeerId}
+                        >
+                            Connect
+                        </button>
+                    </div>
+                )}
+            </div>
 
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-auto"></video>
+            {/* Messages */}
+            {connection && (
+                <div className="border p-4 rounded">
+                    <h2 className="font-bold">Messages</h2>
+                    <div className="h-40 overflow-y-auto border p-2 mb-2">
+                        {messages.map((msg, i) => (
+                            <p key={i}>{msg}</p>
+                        ))}
+                    </div>
+                    <button 
+                        onClick={() => sendMessage('Hello!')}
+                        className="bg-green-500 text-white px-4 py-2 rounded"
+                    >
+                        Send Hello
+                    </button>
+                </div>
+            )}
+
+            {/* Video Call */}
+            {connection && (
+                <div className="border p-4 rounded">
+                    <h2 className="font-bold">Video Call</h2>
+                    <div className="space-y-2">
+                        <WebcamComponent onStreamReady={setLocalStream} />
+                        {localStream && (
+                            <>
+                                <StreamDisplayComponent stream={localStream} />
+                                <button
+                                    onClick={startCall}
+                                    disabled={!localStream || !!activeCall}
+                                    className="bg-blue-500 text-white px-4 py-2 rounded"
+                                >
+                                    {activeCall ? 'Call Active' : 'Start Call'}
+                                </button>
+                            </>
+                        )}
+                        {remoteStream && (
+                            <StreamDisplayComponent stream={remoteStream} />
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
