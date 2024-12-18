@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Peer } from 'peerjs'
 
 export default function Test() {
@@ -29,6 +29,7 @@ export default function Test() {
         <h1>test</h1>
         <button onClick={createPeer}>Create Peer</button>
         <p>Peer id: {peerId}</p>
+        {peer && <p>Peer is created</p>}
         </div>
     )
 }
