@@ -1,18 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MediaConnection, Peer, type DataConnection } from 'peerjs';
+import { type MediaConnection, Peer, type DataConnection } from 'peerjs';
 import { WebcamComponent, StreamDisplayComponent } from './_index';
+import { get } from 'http';
 
 const PeerConnector = () => {
     // Core peer state
+    const [peerId, setPeerId] = useState<string>('');
     const [peer, setPeer] = useState<Peer | null>(null);
+
+    // Connection state
     const [remotePeerId, setRemotePeerId] = useState<string>('');
     const [connection, setConnection] = useState<DataConnection | null>(null);
-    
+
     // Message state
     const [messages, setMessages] = useState<string[]>([]);
-    
+
     // Call state
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -20,89 +24,93 @@ const PeerConnector = () => {
 
     // Initialize peer connection
     useEffect(() => {
-        const newPeer = new Peer();
+        console.log('useEffect');
 
-        newPeer.on('open', (id) => {
-            console.log('My peer ID is:', id);
+        if (peer == null) {
+            console.log('Creating new peer');
+            const newPeer = new Peer({
+                debug: 3,
+            });
+
+            newPeer.on('open', (id) => {
+                console.log('My peer ID is:', id);
+                setPeerId(id);
+            });
+            newPeer.on('connection', (conn) => {
+                conn.on('open', () => {
+                    console.log('Connected to peer:', conn.peer);
+                    setRemotePeerId(conn.peer);
+                });
+
+                conn.on('data', (data) => {
+                    if (typeof data === 'string') {
+                        setMessages((prev) => [...prev, `Them: ${data}`]);
+                    }
+                });
+                setConnection(conn);
+            });
+
+            newPeer.on('call', (call) => {
+                call.on('stream', (incomingStream) => {
+                    console.log('Received remote stream');
+                    setRemoteStream(incomingStream);
+                });
+
+                call.on('error', (error) => {
+                    console.log('Error:', error);
+                });
+
+                call.on('close', () => {
+                    console.log('Call closed');
+                    setRemoteStream(null);
+                });
+                console.log('Answering call');
+                answerCall(call);
+            });
+            newPeer.on('error', (error) => console.error('Peer error:', error));
+
             setPeer(newPeer);
-        });
-
-        newPeer.on('connection', handleIncomingConnection);
-        newPeer.on('call', handleIncomingCall);
-        newPeer.on('error', (error) => console.error('Peer error:', error));
-
-        return () => {
-            // Clean up streams when component unmounts
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-            if (remoteStream) {
-                remoteStream.getTracks().forEach(track => track.stop());
-            }
-            newPeer.destroy();
-        };
-    }, []);
-
-    // Handle incoming data connection
-    const handleIncomingConnection = (conn: DataConnection) => {
-        setConnection(conn);
-        setupConnectionHandlers(conn);
-    };
-
-    // Handle incoming call
-    const handleIncomingCall = (call: MediaConnection) => {
-        console.log('Incoming call received');
-        setActiveCall(call);
-        
-        console.log(localStream);
-        // Auto-answer the call, optionally with stream
-        if (localStream) {
-            console.log('Answering call with local stream');
-            call.answer(localStream);
-        } else {
-            console.log('Answering call without local stream');
-            call.answer();
         }
-        
-        call.on('stream', (incomingStream) => {
-            console.log('Received remote stream');
-            setRemoteStream(incomingStream);
-        });
-    };
+    }, []);
 
     // Connect to a remote peer
     const connectToPeer = () => {
         if (!peer || !remotePeerId) return;
-        
-        const conn = peer.connect(remotePeerId);
-        setConnection(conn);
-        setupConnectionHandlers(conn);
-    };
 
-    // Set up connection event handlers
-    const setupConnectionHandlers = (conn: DataConnection) => {
-        conn.on('open', () => {
-            console.log('Connected to peer:', conn.peer);
-        });
+        const conn = peer.connect(remotePeerId);
+
+        conn.on('open', () => { console.log('Connected to peer:', conn.peer); });
 
         conn.on('data', (data) => {
             if (typeof data === 'string') {
-                setMessages(prev => [...prev, `Them: ${data}`]);
+                setMessages((prev) => [...prev, `Them: ${data}`]);
             }
         });
 
-        conn.on('close', () => {
-            setConnection(null);
-            setMessages(prev => [...prev, 'Connection closed']);
-        });
+        setConnection(conn);
+    };
+
+    const answerCall = async (call: MediaConnection) => {
+        const stream = await getLocalStream()
+        call.answer(stream);
+        setActiveCall(call);
+    }
+
+    const getLocalStream = async (): Promise<MediaStream> => {
+        if (localStream) {
+            return localStream;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        console.log('Camera started, tracks:', stream.getTracks());
+        return stream;
     };
 
     // Send a message
     const sendMessage = (message: string) => {
         if (!connection) return;
-        
+
         connection.send(message);
-        setMessages(prev => [...prev, `Me: ${message}`]);
+        setMessages((prev) => [...prev, `Me: ${message}`]);
     };
 
     // Initiate a call
@@ -110,15 +118,10 @@ const PeerConnector = () => {
         console.log('Starting call');
         console.log(localStream);
         if (!peer || !remotePeerId || !localStream) return;
-        
+
         const call: MediaConnection = peer.call(remotePeerId, localStream);
-
         call.on('stream', (incomingStream) => {
-            console.log('Call started:', call);
-            console.log(call.metadata);
             console.log('Received remote stream');
-
-            setActiveCall(call);
             setRemoteStream(incomingStream);
         });
 
@@ -128,9 +131,9 @@ const PeerConnector = () => {
 
         call.on('close', () => {
             console.log('Call closed');
-            setActiveCall(null);
             setRemoteStream(null);
         });
+        setActiveCall(call);
     };
 
     return (
@@ -138,7 +141,7 @@ const PeerConnector = () => {
             {/* Connection Status */}
             <div className="border p-4 rounded">
                 <h2 className="font-bold">Connection Status</h2>
-                <p>My Peer ID: {peer?.id || 'Connecting...'}</p>
+                <p>My Peer ID: {peerId || 'Connecting...'}</p>
                 {!connection && (
                     <div className="flex gap-2 mt-2">
                         <input
@@ -148,7 +151,7 @@ const PeerConnector = () => {
                             placeholder="Remote Peer ID"
                             className="border p-2"
                         />
-                        <button 
+                        <button
                             onClick={connectToPeer}
                             className="bg-blue-500 text-white px-4 py-2 rounded"
                             disabled={!peer || !remotePeerId}
@@ -168,7 +171,7 @@ const PeerConnector = () => {
                             <p key={i}>{msg}</p>
                         ))}
                     </div>
-                    <button 
+                    <button
                         onClick={() => sendMessage('Hello!')}
                         className="bg-green-500 text-white px-4 py-2 rounded"
                     >
