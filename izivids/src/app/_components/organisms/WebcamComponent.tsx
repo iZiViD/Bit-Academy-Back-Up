@@ -1,20 +1,20 @@
-"use client";
-
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import HideImageOutlinedIcon from "@mui/icons-material/HideImageOutlined";
 
-const Home = () => {
+interface WebcamComponentProps {
+  onStreamReady?: (stream: MediaStream | null) => void;
+}
+
+const WebcamComponent = ({ onStreamReady }: WebcamComponentProps) => {
   const [isCameraOn, setIsCameraOn] = useState(false);
-  const [filter, setFilter] = useState<
-    "none" | "grayscale" | "sepia" | "invert"
-  >("none");
+  const [filter, setFilter] = useState<"none" | "grayscale" | "sepia" | "invert">("none");
   const [isMirrored, setIsMirrored] = useState(true);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameImageRef = useRef<HTMLImageElement | null>(null);
-  let animationFrameId: number;
   const [isFrameLoaded, setIsFrameLoaded] = useState(false);
-  const [frame, setFrame] = useState<string | null>();
+  const [frame, setFrame] = useState<string | null>(null);
+  let animationFrameId: number;
 
   const startCamera = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -26,10 +26,9 @@ const Home = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {
-          console.log("Video play interrupted");
-        });
+        await videoRef.current.play();
       }
+      if (onStreamReady) onStreamReady(stream);
       setIsCameraOn(true);
     } catch (error) {
       console.error("Error accessing camera:", error);
@@ -42,17 +41,17 @@ const Home = () => {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
-      videoRef.current.pause();
     }
+    if (onStreamReady) onStreamReady(null);
     setIsCameraOn(false);
     cancelAnimationFrame(animationFrameId);
   };
 
   const applyFilter = (data: Uint8ClampedArray) => {
     for (let i = 0; i < data.length; i += 4) {
-      const red = data[i] ?? 0;
-      const green = data[i + 1] ?? 0;
-      const blue = data[i + 2] ?? 0;
+      const red = data[i];
+      const green = data[i + 1];
+      const blue = data[i + 2];
 
       switch (filter) {
         case "grayscale":
@@ -79,9 +78,7 @@ const Home = () => {
   const drawToCanvas = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
-    const context = canvasRef.current.getContext("2d", {
-      willReadFrequently: true,
-    });
+    const context = canvasRef.current.getContext("2d", { willReadFrequently: true });
     if (context) {
       context.save();
 
@@ -90,42 +87,19 @@ const Home = () => {
         context.translate(-canvasRef.current.width, 0);
       }
 
-      context.drawImage(
-        videoRef.current,
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height,
-      );
-
+      context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
       context.restore();
 
-      const imageData = context.getImageData(
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height,
-      );
+      const imageData = context.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
       const data = imageData.data;
 
       applyFilter(data);
 
       context.putImageData(imageData, 0, 0);
-    }
 
-    if (
-      frameImageRef.current &&
-      canvasRef.current &&
-      context &&
-      isFrameLoaded
-    ) {
-      context.drawImage(
-        frameImageRef.current,
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height,
-      );
+      if (frameImageRef.current && isFrameLoaded) {
+        context.drawImage(frameImageRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
     }
 
     animationFrameId = requestAnimationFrame(drawToCanvas);
@@ -144,99 +118,52 @@ const Home = () => {
     }
   }, [frame]);
 
-  function activateGoldFrame() {
-    setFrame("/assets/frames/golden-frame.svg");
-  }
-
-  function activateBirthdayFrame() {
-    setFrame("/assets/frames/birthday-frame.png");
-  }
-
-  function disableFrame() {
-    setFrame(null);
-  }
+  const activateFrame = (framePath: string) => setFrame(framePath);
+  const disableFrame = () => setFrame(null);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 p-4">
-      <h1 className="mb-4 text-2xl font-bold">Camera Viewer with Filters</h1>
-      <canvas
-        ref={canvasRef}
-        width={640}
-        height={480}
-        className="border border-gray-300"
-      ></canvas>
+    <div className="flex flex-col items-center p-4">
+      <h1 className="text-xl font-bold">Camera Viewer</h1>
+      <canvas ref={canvasRef} width={640} height={480} className="border"></canvas>
       <video ref={videoRef} className="hidden"></video>
-
-      {frame && (
-        <img ref={frameImageRef} src={frame} alt="Frame" className="hidden" />
-      )}
+      {frame && <img ref={frameImageRef} src={frame} alt="Frame" className="hidden" />}
       <div className="mt-4">
-        {!isCameraOn ? (
-          <button
-            onClick={startCamera}
-            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-          >
-            Open Camera
-          </button>
-        ) : (
-          <button
-            onClick={stopCamera}
-            className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-          >
-            Stop Camera
-          </button>
-        )}
+        <button
+          onClick={isCameraOn ? stopCamera : startCamera}
+          className={`px-4 py-2 rounded ${isCameraOn ? "bg-red-500" : "bg-blue-500"} text-white`}
+        >
+          {isCameraOn ? "Stop Camera" : "Start Camera"}
+        </button>
       </div>
       <div className="mt-4 flex gap-2">
-        <button
-          onClick={() => setFilter("none")}
-          className="rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
-        >
-          No Filter
-        </button>
-        <button
-          onClick={() => setFilter("grayscale")}
-          className="rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600"
-        >
-          Grayscale
-        </button>
-        <button
-          onClick={() => setFilter("sepia")}
-          className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600"
-        >
-          Sepia
-        </button>
-        <button
-          onClick={() => setFilter("invert")}
-          className="rounded bg-purple-500 px-4 py-2 text-white hover:bg-purple-600"
-        >
-          Invert
-        </button>
+        {["none", "grayscale", "sepia", "invert"].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f as "none" | "grayscale" | "sepia" | "invert")}
+            className="px-4 py-2 rounded bg-gray-500 text-white"
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
       </div>
       <div className="mt-4">
-        <button
-          onClick={() => setIsMirrored(!isMirrored)}
-          className="rounded bg-indigo-500 px-4 py-2 text-white hover:bg-indigo-600"
-        >
-          {isMirrored ? "Unmirror" : "Mirror"} Camera
+        <button onClick={() => setIsMirrored(!isMirrored)} className="px-4 py-2 bg-indigo-500 text-white rounded">
+          {isMirrored ? "Unmirror" : "Mirror"}
         </button>
       </div>
-      <div className="mt-4 flex flex-row gap-2">
-        <button
-          className="btn btn-circle btn-outline btn-active"
-          onClick={disableFrame}
-        >
+      <div className="mt-4 flex gap-2">
+        <button onClick={disableFrame} className="p-2 border rounded">
           <HideImageOutlinedIcon />
         </button>
-        <button className="btn btn-active" onClick={activateGoldFrame}>
-          Golden frame
+        <button onClick={() => activateFrame("/assets/frames/golden-frame.svg")} className="px-4 py-2 bg-yellow-500 text-white rounded">
+          Golden Frame
         </button>
-        <button className="btn btn-active" onClick={activateBirthdayFrame}>
-          Birthday frame
+        <button onClick={() => activateFrame("/assets/frames/birthday-frame.png")} className="px-4 py-2 bg-green-500 text-white rounded">
+          Birthday Frame
         </button>
       </div>
     </div>
   );
 };
 
-export default Home;
+export default WebcamComponent;
