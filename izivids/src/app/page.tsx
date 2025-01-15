@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
       setIsClient(true);
