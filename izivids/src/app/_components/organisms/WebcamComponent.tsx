@@ -21,15 +21,25 @@ const WebcamComponent = ({ onStreamReady }: WebcamComponentProps) => {
       alert("Camera not supported on this device.");
       return;
     }
-
+  
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-      if (onStreamReady) onStreamReady(stream);
       setIsCameraOn(true);
+
+      drawToCanvas();
+
+      setTimeout(() => {
+        if (canvasRef.current) {
+          const canvasStream = canvasRef.current.captureStream(30);
+          if (onStreamReady) {
+            onStreamReady(canvasStream);
+          }
+        }
+      }, 100);
     } catch (error) {
       console.error("Error accessing camera:", error);
       alert("Could not access the camera.");
@@ -77,7 +87,7 @@ const WebcamComponent = ({ onStreamReady }: WebcamComponentProps) => {
 
   const drawToCanvas = () => {
     if (!videoRef.current || !canvasRef.current) return;
-
+  
     const context = canvasRef.current.getContext("2d", { willReadFrequently: true });
     if (context) {
       context.save();
@@ -92,9 +102,7 @@ const WebcamComponent = ({ onStreamReady }: WebcamComponentProps) => {
 
       const imageData = context.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
       const data = imageData.data;
-
       applyFilter(data);
-
       context.putImageData(imageData, 0, 0);
 
       if (frameImageRef.current && isFrameLoaded) {
