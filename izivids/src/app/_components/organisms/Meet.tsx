@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { WebcamComponent, WebRTCComponent } from "./_index";
 
-const Meet = (props) => {
+const Meet = () => {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
     return (

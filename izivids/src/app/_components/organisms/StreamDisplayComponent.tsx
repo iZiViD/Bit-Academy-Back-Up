@@ -11,6 +11,8 @@ const StreamDisplayComponent = ({ stream, className = "w-full h-auto" }: StreamD
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      // console log the srcObject with big red letters
+      console.log('%c srcObject:', 'color: red; font-size: 16px;', videoRef.current);
     }
   }, [stream]);
 
