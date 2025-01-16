@@ -16,7 +16,7 @@ const PeerConnector = () => {
 
     // Message state
     const [messages, setMessages] = useState<string[]>([]);
-
+    const [message, setMessage] = useState<string>('');
     // Call state
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -171,12 +171,31 @@ const PeerConnector = () => {
                             <p key={i}>{msg}</p>
                         ))}
                     </div>
-                    <button
-                        onClick={() => sendMessage('Hello!')}
-                        className="bg-green-500 text-white px-4 py-2 rounded"
-                    >
-                        Send Hello
-                    </button>
+                    <div className="flex gap-2 mt-2">
+                    <input
+        type="text"
+        placeholder="Type your message here"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+                sendMessage(message);
+                setMessage('');
+            }
+        }}
+        className="border p-2 flex-1 rounded-md"
+    />
+    <button
+        onClick={() => {
+            sendMessage(message);
+            setMessage('');
+        }}
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+        disabled={!message || !connection}
+    >
+        Send
+    </button>
+</div>
                 </div>
             )}
 
