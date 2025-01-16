@@ -205,21 +205,25 @@ const PeerConnector = () => {
                     <h2 className="font-bold">Video Call</h2>
                     <div className="space-y-2">
                         <WebcamComponent onStreamReady={setLocalStream} />
-                        {localStream && (
-                            <>
-                                <StreamDisplayComponent stream={localStream} />
-                                <button
-                                    onClick={startCall}
-                                    disabled={!localStream || !!activeCall}
-                                    className="bg-blue-500 text-white px-4 py-2 rounded"
-                                >
-                                    {activeCall ? 'Call Active' : 'Start Call'}
-                                </button>
-                            </>
-                        )}
-                        {remoteStream && (
-                            <StreamDisplayComponent stream={remoteStream} />
-                        )}
+                                                <div className="flex">
+                            {localStream && (
+                                <div className="flex-1 m-4">
+                                    <StreamDisplayComponent stream={localStream} />
+                                    <button
+                                        onClick={startCall}
+                                        disabled={!localStream || !!activeCall}
+                                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                                    >
+                                        {activeCall ? 'Call Active' : 'Start Call'}
+                                    </button>
+                                </div>
+                            )}
+                            {remoteStream && (
+                                <div className="flex-1 m-4">
+                                    <StreamDisplayComponent stream={remoteStream} />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
