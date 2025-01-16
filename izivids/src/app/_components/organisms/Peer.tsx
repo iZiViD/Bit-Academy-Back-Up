@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
 import { type MediaConnection, Peer, type DataConnection } from 'peerjs';
 import { WebcamComponent, StreamDisplayComponent } from './_index';
-import { get } from 'http';
+import ScreenSharing from '../ScreenSharing';
 
 const PeerConnector = () => {
     // Core peer state
@@ -172,30 +172,30 @@ const PeerConnector = () => {
                         ))}
                     </div>
                     <div className="flex gap-2 mt-2">
-                    <input
-        type="text"
-        placeholder="Type your message here"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-                sendMessage(message);
-                setMessage('');
-            }
-        }}
-        className="border p-2 flex-1 rounded-md"
-    />
-    <button
-        onClick={() => {
-            sendMessage(message);
-            setMessage('');
-        }}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-        disabled={!message || !connection}
-    >
-        Send
-    </button>
-</div>
+                        <input
+                            type="text"
+                            placeholder="Type your message here"
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    sendMessage(message);
+                                    setMessage('');
+                                }
+                            }}
+                            className="border p-2 flex-1 rounded-md"
+                        />
+                        <button
+                            onClick={() => {
+                                sendMessage(message);
+                                setMessage('');
+                            }}
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            disabled={!message || !connection}
+                        >
+                            Send
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -205,7 +205,7 @@ const PeerConnector = () => {
                     <h2 className="font-bold">Video Call</h2>
                     <div className="space-y-2">
                         <WebcamComponent onStreamReady={setLocalStream} />
-                                                <div className="flex">
+                        <div className="flex">
                             {localStream && (
                                 <div className="flex-1 m-4">
                                     <StreamDisplayComponent stream={localStream} />
@@ -216,6 +216,11 @@ const PeerConnector = () => {
                                     >
                                         {activeCall ? 'Call Active' : 'Start Call'}
                                     </button>
+                                </div>
+                            )}
+                            {connection && (
+                                <div className="flex-1 m-4">
+                                    <ScreenSharing />
                                 </div>
                             )}
                             {remoteStream && (
